@@ -1,6 +1,6 @@
 const Product = require('../models/Product');
 
-// Obtener productos con FILTRADO MÚLTIPLE, POPULATE y ORDENAMIENTO
+// LIST - Obtener productos con FILTRADO MÚLTIPLE, POPULATE, ORDENAMIENTO y PAGINACIÓN
 exports.getProducts = async (req, res) => {
   try {
     const { 
@@ -14,7 +14,10 @@ exports.getProducts = async (req, res) => {
       isAvailable,
       supplierName,
       sortBy = 'createdAt',
-      order = 'desc'
+      order = 'desc',
+      page = 1,
+      limit = 10,
+      text
     } = req.query;
 
     // FILTRADO POR MÚLTIPLES CRITERIOS
@@ -52,6 +55,10 @@ exports.getProducts = async (req, res) => {
       filters['supplier.name'] = { $regex: supplierName, $options: 'i' };
     }
 
+    if (text) {
+      filters.$text = { $search: text };
+    }
+
     // ORDENAMIENTO POR DIFERENTES CAMPOS
     const sort = {};
     sort[sortBy] = order === 'asc' ? 1 : -1;
@@ -66,11 +73,18 @@ exports.getProducts = async (req, res) => {
           select: 'name description'
         }
       })
-      .sort(sort);
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Product.countDocuments(filters);
 
     res.json({
       success: true,
       count: products.length,
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / limit),
       data: products
     });
   } catch (error) {
@@ -82,18 +96,21 @@ exports.getProducts = async (req, res) => {
   }
 };
 
+// Alias para compatibilidad
+exports.listProducts = exports.getProducts;
+
+// CREATE - Crear nuevo producto
 exports.createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
-    const productWithCategory = await Product.findById(product._id)
-      .populate({
-        path: 'category',
-        populate: { path: 'parentCategory' }
-      });
+    await product.populate({
+      path: 'category',
+      populate: { path: 'parentCategory' }
+    });
 
     res.status(201).json({
       success: true,
-      data: productWithCategory
+      data: product
     });
   } catch (error) {
     res.status(400).json({
@@ -104,6 +121,7 @@ exports.createProduct = async (req, res) => {
   }
 };
 
+// READ - Obtener producto por ID
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -132,6 +150,7 @@ exports.getProductById = async (req, res) => {
   }
 };
 
+// UPDATE - Actualizar producto
 exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
@@ -163,21 +182,47 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
+// DELETE - Eliminar producto (físico o lógico)
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const logical = req.query.logical === 'true';
+    
+    if (logical) {
+      // Eliminación lógica (desactivar)
+      const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        { isAvailable: false },
+        { new: true }
+      );
+      
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: 'Producto no encontrado'
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Producto desactivado',
+        data: product
+      });
+    } else {
+      // Eliminación física
+      const product = await Product.findByIdAndDelete(req.params.id);
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Producto no encontrado'
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: 'Producto no encontrado'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Producto eliminado físicamente'
       });
     }
-
-    res.json({
-      success: true,
-      message: 'Producto eliminado correctamente'
-    });
   } catch (error) {
     res.status(500).json({
       success: false,

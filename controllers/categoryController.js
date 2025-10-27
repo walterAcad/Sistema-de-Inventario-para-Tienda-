@@ -1,9 +1,16 @@
 const Category = require('../models/Category');
 
-// Obtener categorías con FILTRADO MÚLTIPLE, POPULATE y ORDENAMIENTO
+// LIST - Obtener categorías con FILTRADO MÚLTIPLE, POPULATE, ORDENAMIENTO y PAGINACIÓN
 exports.getCategories = async (req, res) => {
   try {
-    const { name, isActive, sortBy = 'name', order = 'asc' } = req.query;
+    const { 
+      name, 
+      isActive, 
+      sortBy = 'name', 
+      order = 'asc',
+      page = 1,
+      limit = 10
+    } = req.query;
 
     // FILTRADO POR MÚLTIPLES CRITERIOS
     const filters = {};
@@ -22,12 +29,19 @@ exports.getCategories = async (req, res) => {
 
     // POPULATE DE REFERENCIAS (parentCategory)
     const categories = await Category.find(filters)
-      .populate('parentCategory', 'name description')
-      .sort(sort);
+      .populate('parentCategory', 'name description isActive')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Category.countDocuments(filters);
 
     res.json({
       success: true,
       count: categories.length,
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / limit),
       data: categories
     });
   } catch (error) {
@@ -39,15 +53,18 @@ exports.getCategories = async (req, res) => {
   }
 };
 
+// Alias para compatibilidad
+exports.listCategories = exports.getCategories;
+
+// CREATE - Crear nueva categoría
 exports.createCategory = async (req, res) => {
   try {
     const category = await Category.create(req.body);
-    const categoryWithParent = await Category.findById(category._id)
-      .populate('parentCategory');
+    await category.populate('parentCategory');
     
     res.status(201).json({
       success: true,
-      data: categoryWithParent
+      data: category
     });
   } catch (error) {
     res.status(400).json({
@@ -58,6 +75,7 @@ exports.createCategory = async (req, res) => {
   }
 };
 
+// READ - Obtener categoría por ID
 exports.getCategoryById = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id)
@@ -83,6 +101,7 @@ exports.getCategoryById = async (req, res) => {
   }
 };
 
+// UPDATE - Actualizar categoría
 exports.updateCategory = async (req, res) => {
   try {
     const category = await Category.findByIdAndUpdate(
@@ -111,21 +130,47 @@ exports.updateCategory = async (req, res) => {
   }
 };
 
+// DELETE - Eliminar categoría (físico o lógico)
 exports.deleteCategory = async (req, res) => {
   try {
-    const category = await Category.findByIdAndDelete(req.params.id);
+    const logical = req.query.logical === 'true';
     
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Categoría no encontrada'
+    if (logical) {
+      // Eliminación lógica (desactivar)
+      const category = await Category.findByIdAndUpdate(
+        req.params.id,
+        { isActive: false },
+        { new: true }
+      );
+      
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: 'Categoría no encontrada'
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Categoría desactivada',
+        data: category
+      });
+    } else {
+      // Eliminación física
+      const category = await Category.findByIdAndDelete(req.params.id);
+      
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: 'Categoría no encontrada'
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Categoría eliminada correctamente'
       });
     }
-    
-    res.json({
-      success: true,
-      message: 'Categoría eliminada correctamente'
-    });
   } catch (error) {
     res.status(500).json({
       success: false,
