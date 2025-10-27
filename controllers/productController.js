@@ -1,27 +1,28 @@
-const Product = require('../models/Product');
+// const Product = require('../models/Product');
+import Product from "../models/Category.js";
 
 // Obtener productos con FILTRADO MÚLTIPLE, POPULATE y ORDENAMIENTO
 exports.getProducts = async (req, res) => {
   try {
-    const { 
-      name, 
-      priceMin, 
-      priceMax, 
-      stockMin, 
+    const {
+      name,
+      priceMin,
+      priceMax,
+      stockMin,
       stockMax,
       category,
       sku,
       isAvailable,
       supplierName,
-      sortBy = 'createdAt',
-      order = 'desc'
+      sortBy = "createdAt",
+      order = "desc",
     } = req.query;
 
     // FILTRADO POR MÚLTIPLES CRITERIOS
     const filters = {};
 
     if (name) {
-      filters.name = { $regex: name, $options: 'i' };
+      filters.name = { $regex: name, $options: "i" };
     }
 
     if (priceMin || priceMax) {
@@ -45,39 +46,39 @@ exports.getProducts = async (req, res) => {
     }
 
     if (isAvailable !== undefined) {
-      filters.isAvailable = isAvailable === 'true';
+      filters.isAvailable = isAvailable === "true";
     }
 
     if (supplierName) {
-      filters['supplier.name'] = { $regex: supplierName, $options: 'i' };
+      filters["supplier.name"] = { $regex: supplierName, $options: "i" };
     }
 
     // ORDENAMIENTO POR DIFERENTES CAMPOS
     const sort = {};
-    sort[sortBy] = order === 'asc' ? 1 : -1;
+    sort[sortBy] = order === "asc" ? 1 : -1;
 
     // POPULATE DE REFERENCIAS (category con parentCategory anidado)
     const products = await Product.find(filters)
       .populate({
-        path: 'category',
-        select: 'name description isActive',
+        path: "category",
+        select: "name description isActive",
         populate: {
-          path: 'parentCategory',
-          select: 'name description'
-        }
+          path: "parentCategory",
+          select: "name description",
+        },
       })
       .sort(sort);
 
     res.json({
       success: true,
       count: products.length,
-      data: products
+      data: products,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error al obtener productos',
-      error: error.message
+      message: "Error al obtener productos",
+      error: error.message,
     });
   }
 };
@@ -85,80 +86,77 @@ exports.getProducts = async (req, res) => {
 exports.createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
-    const productWithCategory = await Product.findById(product._id)
-      .populate({
-        path: 'category',
-        populate: { path: 'parentCategory' }
-      });
+    const productWithCategory = await Product.findById(product._id).populate({
+      path: "category",
+      populate: { path: "parentCategory" },
+    });
 
     res.status(201).json({
       success: true,
-      data: productWithCategory
+      data: productWithCategory,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: 'Error al crear producto',
-      error: error.message
+      message: "Error al crear producto",
+      error: error.message,
     });
   }
 };
 
 exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate({
-        path: 'category',
-        populate: { path: 'parentCategory' }
-      });
+    const product = await Product.findById(req.params.id).populate({
+      path: "category",
+      populate: { path: "parentCategory" },
+    });
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Producto no encontrado'
+        message: "Producto no encontrado",
       });
     }
 
     res.json({
       success: true,
-      data: product
+      data: product,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error al obtener producto',
-      error: error.message
+      message: "Error al obtener producto",
+      error: error.message,
     });
   }
 };
 
 exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate({
-      path: 'category',
-      populate: { path: 'parentCategory' }
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    }).populate({
+      path: "category",
+      populate: { path: "parentCategory" },
     });
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Producto no encontrado'
+        message: "Producto no encontrado",
       });
     }
 
     res.json({
       success: true,
-      data: product
+      data: product,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: 'Error al actualizar producto',
-      error: error.message
+      message: "Error al actualizar producto",
+      error: error.message,
     });
   }
 };
@@ -170,19 +168,19 @@ exports.deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Producto no encontrado'
+        message: "Producto no encontrado",
       });
     }
 
     res.json({
       success: true,
-      message: 'Producto eliminado correctamente'
+      message: "Producto eliminado correctamente",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error al eliminar producto',
-      error: error.message
+      message: "Error al eliminar producto",
+      error: error.message,
     });
   }
 };
