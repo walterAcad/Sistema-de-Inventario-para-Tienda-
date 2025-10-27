@@ -24,22 +24,14 @@ app.get("/", (req, res) => {
   res.send("Sistema de Inventario - API funcionando");
 });
 
-app.use((req, res, next) => {
-  const error = new Error(`No se encontró la ruta: ${req.originalUrl}`);
-  error.status = 404;
-  next(error);
-});
+// Importar middlewares de error
+const { notFound, globalErrorHandler } = require('./middlewares/errorHandler');
 
-// Middleware de manejo de errores general (4 argumentos)
-app.use((err, req, res, next) => {
-  const statusCode = err.status || 500;
-  res.status(statusCode).json({
-    error: {
-      message: err.message || "Error interno del servidor.",
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    },
-  });
-});
+// Middleware para rutas no encontradas
+app.use(notFound);
+
+// Middleware global de manejo de errores
+app.use(globalErrorHandler);
 
 // Iniciar el servidor Express
 app.listen(PORT, () => {
