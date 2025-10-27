@@ -12,8 +12,16 @@ mongoose
   .catch((err) => console.error("Error al conectar a MongoDB:", err));
 app.use(express.json());
 
+// Importar rutas
+const productRoutes = require('./routes/productRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+
+// Usar rutas
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+
 app.get("/", (req, res) => {
-  res.send("prueba conexion");
+  res.send("Sistema de Inventario - API funcionando");
 });
 
 app.use((req, res, next) => {
