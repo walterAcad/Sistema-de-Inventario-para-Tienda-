@@ -10,5 +10,18 @@ async function buscarPorNombre(nombreBusqueda) {
         console.error('Error durante la búsqueda:', error);
     }
 }
-buscarPorNombre('camisa');
+//buscarPorNombre('camisa');
 module.exports = { buscarPorNombre };
+
+//Busqueda Filtrado por múltiples criterios 
+async function buscarPorCriterios(filtros) {
+    try {
+        const resultados = await Product.find(filtros);
+        console.log('Resultados de la búsqueda por criterios:', resultados);
+    } catch (error) {
+        console.error('Error durante la búsqueda por criterios:', error);
+    }
+}
+
+// Ejemplo de uso
+// buscarPorCriterios({ category: 'camisas', price: { $lt: 50 } });
